@@ -261,3 +261,21 @@ python scripts/eval.py --config configs/pretrain.yaml
 | 可选依赖 | langchain / scikit-learn 等**暂不安装**，接入点提供示例脚本 |
 
 > 说明：1–2h 预算内各阶段以“跑通 + 验证正确”为验收标准，模型质量为 demo 级；每个 config 均预留放大路径。
+
+## 10. 实施进度（2026-10-17 更新）
+
+| 阶段 | 分支 | 状态 | 验证 |
+| --- | --- | --- | --- |
+| P0 骨架+配置 | p0-scaffold | ✅ 合并 main | config 单测 10 passed |
+| P1 BPE 分词器 | p1-tokenizer | ✅ 合并 main | 分词/回环 17 passed；vocab 8192 |
+| P2 GPT+预训练 | p2-pretrain | ✅ 合并 main | 模型/训练单测 17 passed；预训练 1200 步完成，loss 9.9→~5.8 |
+| P3 SFT+LoRA | p3-sft-lora | ✅ 合并 main（训练链运行中） | 掩码/打包/LoRA 合并等价单测；sft.pt/adapter.pt 训练中 |
+| P4 DPO | p4-dpo | ✅ 合并 main（训练链运行中） | 参考缓存+β+SFT 正则单测；dpo.pt 训练中 |
+| P5 推理+工具 | p5-inference-tools | ✅ 合并 main | 安全执行器 13 passed |
+| P6 多模态 | p6-multimodal | ✅ 合并 main | ViT/投影/图文前向 5 passed |
+| P7 MCP | p7-mcp | ✅ 合并 main | stdio JSON-RPC 3 passed |
+| P8 RAG | p8-rag | ✅ 合并 main | bigram+TF-IDF 5 passed |
+| P9 API+LangChain | p9-api-langchain | ✅ 合并 main | 全端点集成测试 6 passed（含流式） |
+| P10 真机调优 | p10-tuning | 🔄 进行中 | 全量测试 64 passed；真实 checkpoint 端到端冒烟待训练链完成 |
+
+> 累计：**64+ 项单测全绿**；9 个功能分支 + main 已推送 gitee（SSH）。
