@@ -1,0 +1,18 @@
+{
+  "corpus_path": "data/corpus/pretrain.txt",
+  "corpus_chars": 12313045,
+  "vocab_size_target": 8192,
+  "vocab_size_actual": 8192,
+  "n_merges": 7928,
+  "n_special": 8,
+  "special_tokens": [
+    "<s>",
+    "</s>",
+    "<pad>",
+    "<unk>",
+    "<|user|>",
+    "<|assistant|>",
+    "<|image|>",
+    "<|tool|>"
+  ]
+}

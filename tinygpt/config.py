@@ -163,6 +163,7 @@ class TrainStageConfig:  # 预训练 / SFT / DPO / 多模态共用的顶层结�
 class TokenizerDataConfig:
     corpus_path: str = "data/corpus/pretrain.txt"
     min_freq: int = 2
+    max_tokens: int = 1_000_000
 
 
 @dataclass
