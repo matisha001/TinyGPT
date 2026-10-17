@@ -51,6 +51,11 @@ class BytePairTokenizer:
     def vocab_size_actual(self) -> int:
         return self.n_special + 256 + self.n_merges
 
+    @property
+    def special_ids(self) -> dict:
+        """special token → id 映射（如 {'<s>': 0, '<|user|>': 4, ...}）。"""
+        return dict(self._special_to_id)
+
     def id_of(self, special: str) -> int:
         if special not in self._special_to_id:
             raise KeyError(f"非特殊 token: {special!r}")
