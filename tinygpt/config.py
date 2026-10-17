@@ -126,6 +126,7 @@ class DataConfig:
     pack: bool = True
     num_workers: int = 0
     max_samples: Optional[int] = None
+    eval_ratio: float = 0.01   # 语料块中固定用于评估的比例（不参与训练）
 
 
 @dataclass

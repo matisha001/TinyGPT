@@ -10,12 +10,12 @@
 | 硬件项 | 约束 | 应对策略 |
 | --- | --- | --- |
 | CPU：2GHz 四核 Intel i5（x86_64） | 无 NVIDIA GPU；**macOS Intel 不支持 MPS**（MPS 仅 Apple Silicon） | 训练走纯 CPU + fp32；`torch.set_num_threads(4)`；Dataloader 不用多进程（`num_workers=0`）避免内存翻倍 |
-| 内存：16GB | 训练态内存 = 参数+梯度+优化器状态 ≈ 16B/参数（fp32+AdamW） | 目标模型 **~17M 参数**（训练态 < 300MB，峰值 < 2GB，余量充足）；LoRA 阶段更省 |
+| 内存：16GB | 训练态内存 = 参数+梯度+优化器状态 ≈ 16B/参数（fp32+AdamW） | 目标模型 **~7M 参数（demo 档，hidden256/6层/4头）**，训练态 ≈ 120MB，峰值 < 1GB；放大只需改 config |
 | iGPU：Intel Iris Plus 1536MB | 不能用于训练 | 不接入训练，仅做普通显示 |
 | 核数少 | 吞吐有限 | 小 batch（8–16）+ 梯度累积；**打包训练**减少 padding 浪费；序列长度 256–512 |
 | macOS 13.1 Intel | PyTorch 已停止 Intel Mac 新版 wheel | 项目使用 **Python 3.12 + torch 2.2.x（CPU）** 专用 venv（本机默认 Python 3.14 无 Intel Mac wheel） |
 
-**规模结论**：推荐基座模型 ~17M 参数（hidden=384 / 8 层 / 8 头 / 词表 8192），小语料一轮预训练可在**一晚内完成**（精确时长先跑 `scripts/bench.py` 定标）。
+**规模结论**：demo 档基座 ~7.3M 参数（hidden=256 / 6 层 / 4 头 / ffn=768 / 词表 8192，CPU 约 1.5–2 s/步）；放大路径 hidden 384–1024、层数 8–12 全由 YAML 驱动。
 
 ---
 
@@ -179,14 +179,14 @@ tiny-gpt/
 | 阶段 | 数据规模（推荐起步） | 关键超参 | 训练量 | 预计时长（4 核 CPU，实测定标为准） |
 | --- | --- | --- | --- | --- |
 | 分词器 | 语料 5–30MB 中文 | 词表 8192 | 单次 | 数分钟 |
-| 预训练 | 5–30MB 中文语料（≈2–8M tokens） | hidden384/8层/8头，seq256，batch16 | 3–5 epoch | 1–4 小时 |
+| 预训练 | 5–30MB 中文语料（≈2–8M tokens） | hidden256/6层/4头，seq256，batch16 | 1200 步 | ≈30 分钟 |
 | SFT | 2k–20k 指令样本 | 掩码 + 打包，seq≤512 | 2–3 epoch | 30–90 分钟 |
 | LoRA SFT | 同上 | r=8, α=16, 全 7 目标 | 2–3 epoch | 20–60 分钟 |
 | DPO | 1k–5k 偏好对 | β=0.1，参考缓存，λ_sft 可配 | 1–2 epoch | 30–90 分钟 |
 | 多模态 | 500–2k 图文问答对 | ViT 6M + 投影 + LoRA | 1–2 epoch | 1–2 小时 |
 | RAG | 知识库 0.5–5MB 文本 | bigram + TF-IDF，top-k=3–5 | 入库一次 | 分钟级 |
 
-- 内存峰值预估：17M 模型 fp32 训练态 ≈ 300MB + 激活/数据 ≈ **峰值 < 2GB**，16GB 内存无压力；40M 模型（可选"较大"档）峰值约 1.5–2GB 也放得下，但训练时间约 ×2–3。
+- 内存峰值预估：7.3M 模型 fp32 训练态 ≈ 120MB + 激活/数据 ≈ **峰值 < 1GB**；放大到 40M 模型峰值约 1.5–2GB 也可承受，训练时间约 ×3–5。
 - **数据来源策略（已确认：允许联网下载小型公开集）**：`scripts/download_data.py` 提供多源回退链（HF 镜像等）下载小型公开中文语料（预训练文本 / 指令集），并支持 `max_samples` 截断；仓库同时内置极小 demo 语料兜底，离线也能跑通全链路。DPO 偏好对可用指令集确定性构造；多模态先用内置合成图集（PIL 生成、标签可验证），后续可换真实 VQA 数据。
 
 ---
@@ -252,7 +252,7 @@ python scripts/eval.py --config configs/pretrain.yaml
 
 | 决策项 | 结论 |
 | --- | --- |
-| 模型规模 | 默认不大（~17M），**全部尺寸 YAML 可配置**，后续直接改 config 扩大 |
+| 模型规模 | 默认 demo 档（~7M），**全部尺寸 YAML 可配置**，后续直接改 config 扩大 |
 | 数据来源 | **允许联网下载小型公开集**（download_data.py 多源回退 + max_samples 截断）；内置 demo 语料离线兜底 |
 | 时长预算 | **1–2 小时跑通全链路 demo**（小数据小模型）；要更好效果按配置放大（数小时一晚） |
 | Python | 本机默认 3.14.7 不兼容 Intel Mac torch；项目使用 **Python 3.12.7 venv + torch 2.2.2 CPU** |

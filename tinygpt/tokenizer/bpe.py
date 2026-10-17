@@ -178,21 +178,32 @@ class BytePairTokenizer:
     # 编码 / 解码
     # ------------------------------------------------------------------
     def encode(self, text: str) -> List[int]:
-        """文本 → token id 列表（严格按 rank 顺序合并，结果确定）。"""
+        """文本 → token id 列表。
+
+        采用"自左向右贪心合并、多轮迭代至不动点"的算法：每轮扫描序列，
+        遇到可合并对立即合并并跳过右元素；重复直至没有任何相邻对属于
+        merge 规则。结果确定、无剩余可合并对（fixpoint），且与训练规则一致；
+        复杂度约 O(序列长度 × 轮数)，适合整语料批量编码。
+        """
         ids = [self.byte_base + b for b in text.encode("utf-8")]
         while True:
-            best: Optional[Tuple[int, int]] = None   # (rank, pos)
-            for i in range(len(ids) - 1):
-                r = self._rank.get((ids[i], ids[i + 1]))
-                if r is not None and (best is None or r < best[0]):
-                    best = (r, i)
-                    if r == self.merge_base:  # 最低可能 rank
-                        break
-            if best is None:
+            merged_any = False
+            new_ids: List[int] = []
+            i = 0
+            n = len(ids)
+            while i < n:
+                if i + 1 < n:
+                    r = self._rank.get((ids[i], ids[i + 1]))
+                    if r is not None:
+                        new_ids.append(r)
+                        i += 2
+                        merged_any = True
+                        continue
+                new_ids.append(ids[i])
+                i += 1
+            ids = new_ids
+            if not merged_any:
                 break
-            _, pos = best
-            new_id = self._rank[(ids[pos], ids[pos + 1])]
-            ids = ids[:pos] + [new_id] + ids[pos + 2:]
         return ids
 
     def decode(self, ids: Iterable[int]) -> str:
