@@ -21,15 +21,17 @@ python scripts/train_tokenizer.py --config configs/tokenizer.yaml
 # 4. 预训练
 python scripts/run_pretrain.py --config configs/pretrain.yaml
 
-# 5. SFT / LoRA / DPO
-python scripts/run_sft.py  --config configs/sft.yaml
-python scripts/run_sft.py  --config configs/lora_sft.yaml
-python scripts/run_dpo.py  --config configs/dpo.yaml
+# 5. SFT / LoRA / DPO（可一键串联）
+python scripts/run_pipeline.py --stages sft,lora,dpo
 
-# 6. 启动 OpenAI 兼容 API（流式 / 多模态 / 工具 / agent 循环 / RAG）
+# 6. 多模态（微型 ViT + 投影层 + 联合微调）
+python scripts/gen_mm_demo.py
+python scripts/run_mm.py --config configs/mm_finetune.yaml
+
+# 7. 启动 OpenAI 兼容 API（流式 / 多模态 / 工具 / agent 循环 / RAG）
 python scripts/run_api.py --config configs/api.yaml
 
-# 7. 测试
+# 8. 测试
 pytest tests/ -q
 ```
 
