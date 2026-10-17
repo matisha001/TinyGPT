@@ -1,2 +1,3 @@
 # 开发/测试依赖
 pytest
+httpx2            # FastAPI TestClient 测试运行依赖
