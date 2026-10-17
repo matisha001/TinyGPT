@@ -1,0 +1,20 @@
+# OpenAI 兼容 API 服务配置
+server:
+  host: 127.0.0.1
+  port: 8000
+  max_tokens: 512
+  temperature: 0.8
+  top_p: 0.9
+  top_k: 40
+model:
+  model_path: checkpoints/sft/sft.pt       # 默认加载的模型
+  tokenizer_path: data/tokenizer/tokenizer.json
+  use_lora: false
+  lora_path: null                          # 加载独立 adapter 时填写
+  vision: null                             # 多模态开启时填写 {image_size,patch_size,hidden,depth,heads}
+capabilities:
+  tools: true                              # /v1/chat/completions 工具调用
+  agent_loop: true                         # /v1/agent/completions 工具循环
+  rag: true                                # /v1/rag/completions + search_kb
+  mcp_servers: []                          # [{"name":..., "command":..., "args":[...], "env":{}}]
+  kb_path: data/kb_index/                  # RAG 知识库索引目录

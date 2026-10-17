@@ -1,0 +1,51 @@
+# 多模态（视觉）联合微调配置：微型 ViT + 投影层 + LLM
+model:
+  vocab_size: 8192
+  hidden_size: 384
+  num_layers: 8
+  num_heads: 8
+  ffn_size: 1024
+  max_seq_len: 512
+  rope_theta: 10000.0
+  rms_norm_eps: 1.0e-6
+  tie_embeddings: true
+  use_lora: true           # LLM 部分用 LoRA，ViT/投影可冻结或微调
+  lora:
+    rank: 8
+    alpha: 16.0
+    dropout: 0.05
+    targets: [q, k, v, o, gate, up, down]
+    merge: false
+  vision:
+    image_size: 224        # 输入图尺寸
+    patch_size: 16         # patch 边长 → 196 patches
+    hidden: 192            # ViT 隐层维度
+    depth: 6               # ViT 层数
+    heads: 6
+    num_vision_tokens: 16  # 投影后注入 LLM 的视觉 token 数
+    freeze: true           # true：冻结 ViT，仅训练投影层 + LoRA
+data:
+  tokenizer_path: data/tokenizer/tokenizer.json
+  mm_path: data/datasets/mm_train.jsonl    # {"image": path, "question":..., "answer":...}
+  seq_len: 512
+  batch_size: 4
+  pack: false
+  num_workers: 0
+  max_samples: null
+train:
+  steps: 1500
+  epochs: 2
+  grad_accum: 4
+  lr: 3.0e-4
+  min_lr: 3.0e-5
+  warmup_steps: 30
+  weight_decay: 0.01
+  max_grad_norm: 1.0
+  seed: 42
+  log_every: 25
+  eval_every: 250
+  save_every: 500
+  out_dir: checkpoints/mm
+  resume: null
+  mask_prompt_loss: true
+  init_from: checkpoints/pretrain/base.pt   # LLM 部分从预训练初始化

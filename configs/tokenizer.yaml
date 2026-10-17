@@ -1,0 +1,15 @@
+# 分词器训练配置（字节级 BPE）
+data:
+  corpus_path: data/corpus/pretrain.txt   # 语料（download_data.py 下载或自定义路径）
+  min_freq: 2                              # 低于该词频的字符合并阈值过滤
+vocab_size: 8192                           # 目标词表大小（字节合并）
+special_tokens:
+  - "<s>"
+  - "</s>"
+  - "<pad>"
+  - "<unk>"
+  - "<|user|>"
+  - "<|assistant|>"
+  - "<|image|>"
+  - "<|tool|>"
+out_dir: data/tokenizer                   # 输出 tokenizer.json / tokenizer_meta.json

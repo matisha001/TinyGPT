@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>tiny-gpt 项目架构与里程碑规划</title>
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #f6f8fa; color: #1f2937; font-family: "PingFang SC", "Microsoft YaHei", "Hiragino Sans GB", system-ui, sans-serif; }
+  .wrap { width: 100%; max-width: 1080px; margin: 0 auto; padding: 24px 20px 40px; }
+  h1 { font-size: 24px; margin: 0 0 6px; }
+  .sub { color: #6b7280; font-size: 14px; margin: 0 0 18px; }
+  .kpis { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 22px; }
+  .kpi { background: #fff; border: 1px solid #e5e7eb; border-radius: 10px; padding: 10px 14px; font-size: 13px; }
+  .kpi b { display: block; font-size: 16px; color: #0f766e; margin-top: 2px; }
+  section { background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; padding: 16px 14px 12px; margin-bottom: 20px; }
+  section h2 { font-size: 17px; margin: 0 0 4px; }
+  section .note { font-size: 13px; color: #6b7280; margin: 0 0 10px; }
+  svg { width: 100%; height: auto; display: block; }
+  .legend { font-size: 12px; color: #6b7280; margin-top: 8px; line-height: 1.7; }
+  .legend span { display: inline-block; margin-right: 14px; }
+  .sw { display: inline-block; width: 11px; height: 11px; border-radius: 3px; margin-right: 4px; vertical-align: -1px; }
+  .footer { font-size: 12px; color: #9ca3af; text-align: center; margin-top: 6px; }
+  .box-title { font-size: 15px; font-weight: 600; }
+  .box-text { font-size: 13.5px; }
+  .stg { font-size: 13px; font-weight: 600; }
+  .t-node { font-size: 14px; font-weight: 600; }
+  .t-desc { font-size: 13px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>tiny-gpt：微型 GPT 全链路项目</h1>
+  <p class="sub">预训练 → SFT → LoRA → DPO → 多模态 → 工具调用 / MCP / RAG → OpenAI 兼容 API → LangChain，纯 CPU 可跑</p>
+
+  <div class="kpis">
+    <div class="kpi">推荐基座规模<b>≈17M 参数</b></div>
+    <div class="kpi">自训分词器<b>字节级 BPE · 词表 8192</b></div>
+    <div class="kpi">训练峰值内存<b>&lt; 2GB（16GB 余量充足）</b></div>
+    <div class="kpi">运行环境<b>macOS Intel · PyTorch CPU</b></div>
+    <div class="kpi">整轮预训练<b>一晚可完成（以实测为准）</b></div>
+  </div>
+
+  <section>
+    <h2>一、训练与能力流水线</h2>
+    <p class="note">数据 → 分词 → 预训练 → 对齐（SFT / LoRA / DPO 可并存切换）→ 多模态 → 能力层 → 服务层</p>
+    <svg viewBox="0 0 1040 786" role="img" aria-label="训练与能力流水线示意图">
+      <!-- ===== 左侧阶段标签 ===== -->
+      <g font-size="13" font-weight="600" text-anchor="middle">
+        <rect x="70" y="22" width="110" height="34" rx="8" fill="#e6f2ea" stroke="#a7c9b4"/>
+        <text x="125" y="44" fill="#166534" class="stg">数据层</text>
+        <rect x="70" y="118" width="110" height="34" rx="8" fill="#fdf2dc" stroke="#e0c07e"/>
+        <text x="125" y="140" fill="#92400e" class="stg">分词器</text>
+        <rect x="70" y="204" width="110" height="34" rx="8" fill="#e7f0fb" stroke="#a8c0e6"/>
+        <text x="125" y="226" fill="#1e40af" class="stg">预训练</text>
+        <rect x="70" y="372" width="110" height="34" rx="8" fill="#eef0f9" stroke="#b9c0d8"/>
+        <text x="125" y="394" fill="#3730a3" class="stg">对齐阶段</text>
+        <rect x="70" y="530" width="110" height="34" rx="8" fill="#e0f2f1" stroke="#9fd3cc"/>
+        <text x="125" y="552" fill="#0f766e" class="stg">多模态</text>
+        <rect x="70" y="622" width="110" height="34" rx="8" fill="#fdeeee" stroke="#e2b6b6"/>
+        <text x="125" y="644" fill="#9f1239" class="stg">能力层</text>
+        <rect x="70" y="712" width="110" height="34" rx="8" fill="#f4f0e6" stroke="#cfc5a8"/>
+        <text x="125" y="734" fill="#78350f" class="stg">服务层</text>
+      </g>
+
+      <!-- ===== 主流程 ===== -->
+      <!-- 1 数据层 -->
+      <g>
+        <rect x="240" y="12" width="560" height="68" rx="12" fill="#e6f2ea" stroke="#a7c9b4" stroke-width="1.5"/>
+        <text x="260" y="36" fill="#166534" class="box-title">数据层</text>
+        <g font-size="13">
+          <rect x="300" y="44" width="112" height="26" rx="6" fill="#ffffff" stroke="#bcd9c9"/>
+          <text x="356" y="61" fill="#374151" text-anchor="middle">中文语料</text>
+          <rect x="420" y="44" width="112" height="26" rx="6" fill="#ffffff" stroke="#bcd9c9"/>
+          <text x="476" y="61" fill="#374151" text-anchor="middle">指令集</text>
+          <rect x="540" y="44" width="112" height="26" rx="6" fill="#ffffff" stroke="#bcd9c9"/>
+          <text x="596" y="61" fill="#374151" text-anchor="middle">偏好对</text>
+          <rect x="660" y="44" width="112" height="26" rx="6" fill="#ffffff" stroke="#bcd9c9"/>
+          <text x="716" y="61" fill="#374151" text-anchor="middle">图文集 / 知识库</text>
+        </g>
+      </g>
+      <g stroke="#94a3b8" stroke-width="1.5" fill="none">
+        <line x1="520" y1="80" x2="520" y2="110"/>
+        <path d="M512 104 L520 116 L528 104" fill="#94a3b8" stroke="none"/>
+      </g>
+
+      <!-- 2 分词器 -->
+      <g>
+        <rect x="240" y="116" width="560" height="52" rx="12" fill="#fdf2dc" stroke="#e0c07e" stroke-width="1.5"/>
+        <text x="260" y="142" fill="#92400e" class="box-title">字节级 BPE 分词器（自训）</text>
+        <text x="260" y="158" fill="#78350f" class="box-text">词表 8192 · 中文/英文/生僻字/emoji 无未登录词 · 产出 tokenizer.json</text>
+      </g>
+      <g stroke="#94a3b8" stroke-width="1.5" fill="none">
+        <line x1="520" y1="168" x2="520" y2="192"/>
+        <path d="M512 186 L520 198 L528 186" fill="#94a3b8" stroke="none"/>
+      </g>
+
+      <!-- 3 预训练 -->
+      <g>
+        <rect x="240" y="198" width="560" height="70" rx="12" fill="#e7f0fb" stroke="#a8c0e6" stroke-width="1.5"/>
+        <text x="260" y="224" fill="#1e40af" class="box-title">预训练 · GPT decoder-only</text>
+        <text x="260" y="244" fill="#1e3a8a" class="box-text">RoPE 旋转位置编码 · SwiGLU · RMSNorm · 输入输出词嵌入权重共享</text>
+        <text x="260" y="260" fill="#1e3a8a" class="box-text">seq=256 · batch=16 · AdamW + warmup + cosine · 产出 base.pt</text>
+      </g>
+      <g stroke="#94a3b8" stroke-width="1.5" fill="none">
+        <line x1="520" y1="268" x2="520" y2="292"/>
+        <path d="M512 286 L520 298 L528 286" fill="#94a3b8" stroke="none"/>
+      </g>
+
+      <!-- 4 对齐阶段 -->
+      <g>
+        <rect x="240" y="298" width="560" height="202" rx="12" fill="#f4f6fb" stroke="#b9c0d8" stroke-width="1.5"/>
+        <text x="260" y="322" fill="#3730a3" class="box-title">对齐阶段 · model.use_lora: false|true（全量 / LoRA 并存切换）</text>
+        <rect x="270" y="336" width="500" height="46" rx="8" fill="#eef0f9" stroke="#c6cbe0"/>
+        <text x="286" y="357" fill="#3730a3" class="box-text"><tspan font-weight="600">SFT：</tspan>指令数据 + 回答段掩码损失（prompt 段不计 loss）+ 打包训练</text>
+        <rect x="270" y="390" width="500" height="46" rx="8" fill="#eef0f9" stroke="#c6cbe0"/>
+        <text x="286" y="411" fill="#3730a3" class="box-text"><tspan font-weight="600">LoRA：</tspan>q/k/v/o/gate/up/down 全目标 · rank/alpha 可配 · 可合并 / 不合并</text>
+        <rect x="270" y="444" width="500" height="46" rx="8" fill="#eef0f9" stroke="#c6cbe0"/>
+        <text x="286" y="465" fill="#3730a3" class="box-text"><tspan font-weight="600">DPO：</tspan>参考模型 logprob 缓存 + β 温度 + 附加 SFT 正则（防漂移）</text>
+      </g>
+      <g stroke="#94a3b8" stroke-width="1.5" fill="none">
+        <line x1="520" y1="500" x2="520" y2="524"/>
+        <path d="M512 518 L520 530 L528 518" fill="#94a3b8" stroke="none"/>
+      </g>
+
+      <!-- 5 多模态 -->
+      <g>
+        <rect x="240" y="530" width="560" height="66" rx="12" fill="#e0f2f1" stroke="#9fd3cc" stroke-width="1.5"/>
+        <text x="260" y="554" fill="#0f766e" class="box-title">多模态（视觉）</text>
+        <text x="260" y="574" fill="#115e59" class="box-text">微型 ViT（patch 嵌入 + 位置编码 + 多头自注意力 + 池化）→ 投影层 → 与 LLM 联合微调</text>
+      </g>
+      <g stroke="#94a3b8" stroke-width="1.5" fill="none">
+        <line x1="520" y1="596" x2="520" y2="618"/>
+        <path d="M512 612 L520 624 L528 612" fill="#94a3b8" stroke="none"/>
+      </g>
+
+      <!-- 6 能力层 -->
+      <g>
+        <rect x="240" y="624" width="560" height="64" rx="12" fill="#fdeeee" stroke="#e2b6b6" stroke-width="1.5"/>
+        <text x="260" y="648" fill="#9f1239" class="box-title">能力层</text>
+        <text x="260" y="668" fill="#881337" class="box-text">工具函数调用（OpenAI 风格 tools + AST 白名单安全执行器）</text>
+        <text x="260" y="682" fill="#881337" class="box-text">MCP 客户端（stdio JSON-RPC：initialize → tools/list → tools/call）· RAG（bigram + TF-IDF → search_kb）</text>
+      </g>
+      <g stroke="#94a3b8" stroke-width="1.5" fill="none">
+        <line x1="520" y1="688" x2="520" y2="708"/>
+        <path d="M512 702 L520 714 L528 702" fill="#94a3b8" stroke="none"/>
+      </g>
+
+      <!-- 7 服务层 -->
+      <g>
+        <rect x="240" y="714" width="560" height="58" rx="12" fill="#f4f0e6" stroke="#cfc5a8" stroke-width="1.5"/>
+        <text x="260" y="738" fill="#78350f" class="box-title">服务层</text>
+        <text x="260" y="758" fill="#57534e" class="box-text">OpenAI 兼容 API（/v1/models · chat/completions 流式/多模态/工具 · agent 工具循环 · rag）</text>
+      </g>
+    </svg>
+    <div class="legend">
+      <span><span class="sw" style="background:#e6f2ea"></span>数据 / 输入</span>
+      <span><span class="sw" style="background:#fdf2dc"></span>分词</span>
+      <span><span class="sw" style="background:#e7f0fb"></span>预训练</span>
+      <span><span class="sw" style="background:#eef0f9"></span>对齐（SFT/LoRA/DPO）</span>
+      <span><span class="sw" style="background:#e0f2f1"></span>多模态</span>
+      <span><span class="sw" style="background:#fdeeee"></span>能力层</span>
+      <span><span class="sw" style="background:#f4f0e6"></span>服务层</span>
+    </div>
+  </section>
+
+  <section>
+    <h2>二、系统架构分层</h2>
+    <p class="note">自下而上：数据 → 训练 → 模型/推理 → 能力 → 接入；右侧为每层承担的功能清单</p>
+    <svg viewBox="0 0 1040 500" role="img" aria-label="系统架构分层示意图">
+      <g font-size="13.5">
+        <!-- 行1 接入层 -->
+        <rect x="20" y="12" width="150" height="64" rx="10" fill="#f4f0e6" stroke="#cfc5a8" stroke-width="1.5"/>
+        <text x="95" y="38" text-anchor="middle" fill="#78350f" class="stg">接入层</text>
+        <text x="95" y="58" text-anchor="middle" fill="#57534e" font-size="12">OpenAI 兼容 + LangChain</text>
+        <rect x="186" y="12" width="834" height="64" rx="10" fill="#fdfaf1" stroke="#e3dcc4"/>
+        <text x="204" y="36" fill="#57534e">OpenAI 兼容 API：/v1/models · /v1/chat/completions（流式 / 多模态 / 工具）· /v1/completions · /v1/agent/completions（工具循环）· /v1/rag/completions</text>
+        <text x="204" y="60" fill="#57534e">LangChain 接入：ChatOpenAI(base_url=…/v1) 直连 · bind_tools 可用</text>
+
+        <!-- 行2 能力层 -->
+        <rect x="20" y="90" width="150" height="64" rx="10" fill="#fdeeee" stroke="#e2b6b6" stroke-width="1.5"/>
+        <text x="95" y="116" text-anchor="middle" fill="#9f1239" class="stg">能力层</text>
+        <text x="95" y="136" text-anchor="middle" fill="#881337" font-size="12">工具 / MCP / RAG</text>
+        <rect x="186" y="90" width="834" height="64" rx="10" fill="#fdf3f3" stroke="#f0d9d9"/>
+        <text x="204" y="114" fill="#57534e">工具函数调用：OpenAI 风格 tools 解析 + AST 白名单安全执行器（禁 import / eval / open，限时长）</text>
+        <text x="204" y="138" fill="#57534e">MCP 客户端：stdio JSON-RPC（initialize → tools/list → tools/call，任意 MCP Server）· RAG：字符 bigram + TF-IDF → 上下文注入，暴露 search_kb</text>
+
+        <!-- 行3 模型与推理 -->
+        <rect x="20" y="168" width="150" height="64" rx="10" fill="#e0f2f1" stroke="#9fd3cc" stroke-width="1.5"/>
+        <text x="95" y="194" text-anchor="middle" fill="#0f766e" class="stg">模型与推理</text>
+        <text x="95" y="214" text-anchor="middle" fill="#115e59" font-size="12">生成 · 对话 · 视觉</text>
+        <rect x="186" y="168" width="834" height="64" rx="10" fill="#f1fbf9" stroke="#d5ece8"/>
+        <text x="204" y="192" fill="#57534e">生成 / 对话：贪心 · top-k · top-p · 温度采样 · KV cache 加速</text>
+        <text x="204" y="216" fill="#57534e">模型：GPT decoder-only（RoPE / SwiGLU / RMSNorm / 权重共享）+ LoRA 适配器（use_lora 开关）+ 微型 ViT（图片输入问答）</text>
+
+        <!-- 行4 训练层 -->
+        <rect x="20" y="246" width="150" height="64" rx="10" fill="#e7f0fb" stroke="#a8c0e6" stroke-width="1.5"/>
+        <text x="95" y="272" text-anchor="middle" fill="#1e40af" class="stg">训练层</text>
+        <text x="95" y="292" text-anchor="middle" fill="#1e3a8a" font-size="12">全量 / LoRA 并存</text>
+        <rect x="186" y="246" width="834" height="64" rx="10" fill="#f2f7fd" stroke="#d8e4f5"/>
+        <text x="204" y="270" fill="#57534e">预训练（因果语言模型）｜ SFT（回答段掩码 + 打包）｜ LoRA（q/k/v/o/gate/up/down 全目标，可合并）</text>
+        <text x="204" y="294" fill="#57534e">DPO（参考 logprob 缓存 + β 温度 + 附加 SFT 正则）｜ 多模态联合微调 —— model.use_lora: false|true 切换</text>
+
+        <!-- 行5 数据层 -->
+        <rect x="20" y="324" width="150" height="64" rx="10" fill="#e6f2ea" stroke="#a7c9b4" stroke-width="1.5"/>
+        <text x="95" y="350" text-anchor="middle" fill="#166534" class="stg">数据层</text>
+        <text x="95" y="370" text-anchor="middle" fill="#14532d" font-size="12">语料 · 集 · 库</text>
+        <rect x="186" y="324" width="834" height="64" rx="10" fill="#f2faf5" stroke="#d7ebe0"/>
+        <text x="204" y="348" fill="#57534e">中文语料（预训练）｜ 指令集（SFT）｜ 偏好对（DPO）｜ 图文问答集（多模态）</text>
+        <text x="204" y="372" fill="#57534e">知识库文本（RAG 入库 → bigram + TF-IDF 索引）｜ 内置 demo 集跑通全链路，真实语料可配置路径</text>
+
+        <!-- 行6 运行环境 -->
+        <rect x="20" y="402" width="150" height="64" rx="10" fill="#eef0f9" stroke="#b9c0d8" stroke-width="1.5"/>
+        <text x="95" y="428" text-anchor="middle" fill="#3730a3" class="stg">运行环境</text>
+        <text x="95" y="448" text-anchor="middle" fill="#4f46e5" font-size="12">硬件约束</text>
+        <rect x="186" y="402" width="834" height="64" rx="10" fill="#f7f8fc" stroke="#dcdde8"/>
+        <text x="204" y="426" fill="#57534e">macOS 13.1（Intel）· 2 GHz 四核 Core i5 · 16GB 内存 · Intel Iris Plus 1536MB（不参与训练）</text>
+        <text x="204" y="450" fill="#57534e">PyTorch CPU（fp32，4 线程，num_workers=0）· 目标 17M 参数，训练峰值内存 &lt; 2GB</text>
+      </g>
+    </svg>
+  </section>
+
+  <section>
+    <h2>三、里程碑推进顺序（先跑通最小闭环，再逐模块叠加）</h2>
+    <p class="note">每个阶段都有独立产物与验收标准，避免最后集中暴露问题；全部完成后在你的 Mac 上端到端验证</p>
+    <svg viewBox="0 0 1040 640" role="img" aria-label="里程碑时间线">
+      <line x1="120" y1="24" x2="120" y2="616" stroke="#cbd5e1" stroke-width="2"/>
+      <g font-size="13">
+        <!-- P0 -->
+        <circle cx="120" cy="40" r="9" fill="#0f766e" stroke="#fff" stroke-width="2"/>
+        <text x="150" y="38" fill="#1f2937" class="t-node">P0 脚手架</text>
+        <text x="150" y="56" fill="#6b7280" class="t-desc">仓库结构 / config 体系 / 工具函数 / 测试骨架 —— 全模块可 import</text>
+        <!-- P1 -->
+        <circle cx="120" cy="92" r="9" fill="#0f766e" stroke="#fff" stroke-width="2"/>
+        <text x="150" y="90" fill="#1f2937" class="t-node">P1 分词器</text>
+        <text x="150" y="108" fill="#6b7280" class="t-desc">字节级 BPE 自训 → tokenizer.json，中英混合编码解码无损回环</text>
+        <!-- P2 -->
+        <circle cx="120" cy="144" r="9" fill="#1e40af" stroke="#fff" stroke-width="2"/>
+        <text x="150" y="142" fill="#1f2937" class="t-node">P2 模型 + 预训练</text>
+        <text x="150" y="160" fill="#6b7280" class="t-desc">GPT decoder-only + 训练脚本 → base.pt，loss 下降、可生成中文</text>
+        <!-- P3 -->
+        <circle cx="120" cy="196" r="9" fill="#3730a3" stroke="#fff" stroke-width="2"/>
+        <text x="150" y="194" fill="#1f2937" class="t-node">P3 SFT + LoRA</text>
+        <text x="150" y="212" fill="#6b7280" class="t-desc">回答段掩码 + 打包微调；q/k/v/o/gate/up/down 全目标 LoRA（合并等价验证）</text>
+        <!-- P4 -->
+        <circle cx="120" cy="248" r="9" fill="#3730a3" stroke="#fff" stroke-width="2"/>
+        <text x="150" y="246" fill="#1f2937" class="t-node">P4 DPO</text>
+        <text x="150" y="264" fill="#6b7280" class="t-desc">参考 logprob 缓存 + β + SFT 正则 → dpo.pt，chosen 概率提升</text>
+        <!-- P5 -->
+        <circle cx="120" cy="300" r="9" fill="#9f1239" stroke="#fff" stroke-width="2"/>
+        <text x="150" y="298" fill="#1f2937" class="t-node">P5 推理 + 工具</text>
+        <text x="150" y="316" fill="#6b7280" class="t-desc">采样/对话 + OpenAI 风格 tools + AST 白名单安全执行器（注入全拦截）</text>
+        <!-- P6 -->
+        <circle cx="120" cy="352" r="9" fill="#0f766e" stroke="#fff" stroke-width="2"/>
+        <text x="150" y="350" fill="#1f2937" class="t-node">P6 多模态</text>
+        <text x="150" y="368" fill="#6b7280" class="t-desc">微型 ViT + 投影层 + 图文问答联合微调，图片输入可问答</text>
+        <!-- P7 -->
+        <circle cx="120" cy="404" r="9" fill="#9f1239" stroke="#fff" stroke-width="2"/>
+        <text x="150" y="402" fill="#1f2937" class="t-node">P7 MCP</text>
+        <text x="150" y="420" fill="#6b7280" class="t-desc">stdio JSON-RPC 客户端：initialize → tools/list → tools/call + mock server 测试</text>
+        <!-- P8 -->
+        <circle cx="120" cy="456" r="9" fill="#9f1239" stroke="#fff" stroke-width="2"/>
+        <text x="150" y="454" fill="#1f2937" class="t-node">P8 RAG</text>
+        <text x="150" y="472" fill="#6b7280" class="t-desc">知识库入库 → 字符 bigram + TF-IDF 检索 → 上下文注入，暴露 search_kb 工具</text>
+        <!-- P9 -->
+        <circle cx="120" cy="508" r="9" fill="#78350f" stroke="#fff" stroke-width="2"/>
+        <text x="150" y="506" fill="#1f2937" class="t-node">P9 API + LangChain</text>
+        <text x="150" y="524" fill="#6b7280" class="t-desc">OpenAI 兼容端点（流式 / 多模态 / 工具 / agent 工具循环 / rag）+ bind_tools 跑通</text>
+        <!-- P10 -->
+        <circle cx="120" cy="560" r="9" fill="#78350f" stroke="#fff" stroke-width="2"/>
+        <text x="150" y="558" fill="#1f2937" class="t-node">P10 真机调优</text>
+        <text x="150" y="576" fill="#6b7280" class="t-desc">在你的 Mac 上端到端跑通（torch 2.2.x CPU），README 完整，全链路一晚内可复现</text>
+      </g>
+    </svg>
+  </section>
+
+  <p class="footer">图为规划示意，模块构成与顺序以 PROJECT_PLAN.md 为准 · 时间与内存均为估算，实际以 scripts/bench.py 定标</p>
+</div>
+</body>
+</html>

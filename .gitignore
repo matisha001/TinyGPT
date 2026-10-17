@@ -1,0 +1,22 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+
+# 环境
+.venv/
+venv/
+
+# 训练产物（可再生，不入库）
+checkpoints/
+data/corpus/
+data/datasets/
+data/kb_index/
+*.pt
+*.bin
+
+# 日志与临时
+*.log
+*.tmp
+.DS_Store

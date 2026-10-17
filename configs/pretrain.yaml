@@ -1,0 +1,41 @@
+# 预训练配置（GPT decoder-only，demo 规模；放大模型只需改 model 各维度）
+model:
+  vocab_size: 8192         # 建模型时若与分词器实际词表不一致，训练循环会用分词器词表覆盖
+  hidden_size: 384
+  num_layers: 8
+  num_heads: 8
+  ffn_size: 1024           # SwiGLU：gate/up 投影输出维度
+  max_seq_len: 256
+  rope_theta: 10000.0
+  rms_norm_eps: 1.0e-6
+  tie_embeddings: true     # 输入/输出词嵌入权重共享
+  use_lora: false          # 全量 / LoRA 切换（LoRA 见 lora_sft.yaml）
+  lora:
+    rank: 8
+    alpha: 16.0
+    dropout: 0.05
+    targets: [q, k, v, o, gate, up, down]
+    merge: false
+data:
+  corpus_path: data/corpus/pretrain.txt
+  tokenizer_path: data/tokenizer/tokenizer.json
+  seq_len: 256
+  batch_size: 16
+  pack: true               # 打包训练（减少 padding）
+  num_workers: 0           # Intel Mac 避免多进程内存翻倍
+  max_samples: null        # 语料截断（调试用）
+train:
+  steps: 3000              # 步数上限（与 epochs 取先到者）
+  epochs: 3
+  grad_accum: 4            # 梯度累积 → 等效 batch = batch_size * grad_accum
+  lr: 3.0e-4
+  min_lr: 3.0e-5
+  warmup_steps: 100
+  weight_decay: 0.01
+  max_grad_norm: 1.0
+  seed: 42
+  log_every: 50
+  eval_every: 500
+  save_every: 1000
+  out_dir: checkpoints/pretrain
+  resume: null             # 断点续训：checkpoints/pretrain/ckpt-last.pt

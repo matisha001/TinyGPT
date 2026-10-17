@@ -1,0 +1,45 @@
+# DPO 偏好对齐配置
+model:
+  vocab_size: 8192
+  hidden_size: 384
+  num_layers: 8
+  num_heads: 8
+  ffn_size: 1024
+  max_seq_len: 512
+  rope_theta: 10000.0
+  rms_norm_eps: 1.0e-6
+  tie_embeddings: true
+  use_lora: true           # DPO 常用 LoRA（省内存、防过拟合）
+  lora:
+    rank: 8
+    alpha: 16.0
+    dropout: 0.05
+    targets: [q, k, v, o, gate, up, down]
+    merge: false
+data:
+  tokenizer_path: data/tokenizer/tokenizer.json
+  dpo_path: data/datasets/dpo_pairs.jsonl
+  seq_len: 512
+  batch_size: 4            # DPO 内存翻倍（policy+ref 各一次前向），batch 调小
+  pack: false
+  num_workers: 0
+  max_samples: null
+train:
+  steps: 1500
+  epochs: 2
+  grad_accum: 4
+  lr: 5.0e-5
+  min_lr: 5.0e-6
+  warmup_steps: 30
+  weight_decay: 0.01
+  max_grad_norm: 1.0
+  seed: 42
+  log_every: 25
+  eval_every: 250
+  save_every: 500
+  out_dir: checkpoints/dpo
+  resume: null
+  dpo_beta: 0.1            # 温度 β
+  dpo_sft_reg: 0.2         # 附加 SFT 正则强度（chosen 上的 CE 项）
+  ref_logprobs_path: data/datasets/dpo_ref_logprobs.pt   # 参考模型 logprob 缓存
+  init_from: checkpoints/sft/sft.pt        # 策略/参考模型基座

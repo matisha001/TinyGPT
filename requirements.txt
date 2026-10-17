@@ -1,0 +1,10 @@
+# tiny-gpt 核心依赖（Intel Mac / macOS 13.1 / Python 3.12 验证）
+# 注意：Intel Mac 上 PyTorch 官方 wheel 止步于 2.2.x，且不支持 Python 3.13+
+# 本项目使用 .venv（Python 3.12），勿用系统 Python 3.14 安装
+torch==2.2.2
+numpy<2
+pyyaml
+fastapi
+uvicorn[standard]
+pydantic
+pillow
