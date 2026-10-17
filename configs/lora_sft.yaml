@@ -1,11 +1,11 @@
 # LoRA 低秩微调配置（在预训练/全量基座上）
 model:
   vocab_size: 8192
-  hidden_size: 384
-  num_layers: 8
-  num_heads: 8
-  ffn_size: 1024
-  max_seq_len: 512
+  hidden_size: 256
+  num_layers: 6
+  num_heads: 4
+  ffn_size: 768
+  max_seq_len: 256
   rope_theta: 10000.0
   rms_norm_eps: 1.0e-6
   tie_embeddings: true
@@ -19,13 +19,13 @@ model:
 data:
   tokenizer_path: data/tokenizer/tokenizer.json
   sft_path: data/datasets/sft_train.jsonl
-  seq_len: 512
+  seq_len: 256
   batch_size: 8
   pack: true
   num_workers: 0
   max_samples: null
 train:
-  steps: 2000
+  steps: 600
   epochs: 3
   grad_accum: 4
   lr: 3.0e-4              # LoRA 常用稍大学习率
@@ -35,8 +35,8 @@ train:
   max_grad_norm: 1.0
   seed: 42
   log_every: 50
-  eval_every: 500
-  save_every: 1000
+  eval_every: 200
+  save_every: 400
   out_dir: checkpoints/lora_sft
   resume: null
   mask_prompt_loss: true
