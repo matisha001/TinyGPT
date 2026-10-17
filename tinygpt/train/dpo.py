@@ -67,16 +67,19 @@ def precompute_ref_logprobs(cfg: TrainStageConfig, out_path: Optional[str] = Non
     log.info(f"参考模型 logprob 缓存已保存: {out}（{len(data.pairs)} 对）")
 
 
-def dpo_loss(model: GPT, batch: dict, ref_logp: dict, beta: float,
+def dpo_loss(model: GPT, batch: dict, ref_batch: dict, beta: float,
              sft_reg: float, grad_accum: int) -> torch.Tensor:
     """DPO 损失 + SFT 正则。
 
     L = -log σ(β·(logπθ(y_w) − logπref(y_w) − logπθ(y_l) + logπref(y_l)))
         + λ · SFT_CE(chosen 回答段)
+
+    ref_batch: 本 batch 对应的参考 logprob（由预计算缓存按批次切片得到，
+    两遍迭代使用相同 seed，顺序一致）。
     """
     c_logp = sequence_logprobs(model, batch["chosen_ids"], batch["chosen_mask"])
     r_logp = sequence_logprobs(model, batch["rejected_ids"], batch["rejected_mask"])
-    inner = beta * (c_logp - ref_logp["chosen"] - r_logp + ref_logp["rejected"])
+    inner = beta * (c_logp - ref_batch["chosen"] - r_logp + ref_batch["rejected"])
     loss = -F.logsigmoid(inner).mean()
     if sft_reg > 0:
         logits = model(batch["chosen_ids"])[0]
@@ -123,12 +126,19 @@ def run_dpo(cfg: TrainStageConfig, metrics_path: Optional[str] = None) -> GPT:
     batches = iter(data.iter_batches())
     policy.train()
     micro = 0
+    batch_sz = cfg.data.batch_size
+    n_pairs = len(data.pairs)
     for step in range(steps):
         lr = get_lr(step, warmup, steps, cfg.train.lr, cfg.train.min_lr)
         for g in opt.param_groups:
             g["lr"] = lr
         batch = next(batches)
-        loss = dpo_loss(policy, batch, ref_logp, cfg.train.dpo_beta,
+        # 预计算缓存与训练迭代使用相同 seed/顺序 → 按批切片取参考 logprob
+        i0 = (step * batch_sz) % n_pairs
+        i1 = min(i0 + batch_sz, n_pairs)
+        ref_batch = {"chosen": ref_logp["chosen"][i0:i1],
+                     "rejected": ref_logp["rejected"][i0:i1]}
+        loss = dpo_loss(policy, batch, ref_batch, cfg.train.dpo_beta,
                         cfg.train.dpo_sft_reg, grad_accum)
         loss.backward()
         micro += 1

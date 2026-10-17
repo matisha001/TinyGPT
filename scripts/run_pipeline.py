@@ -13,6 +13,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
+import os
+os.chdir(ROOT)   # 固定工作目录，避免相对路径（tokenizer/datasets/checkpoints）失效
 
 from tinygpt.config import TrainStageConfig, load_config
 from tinygpt.train.pretrain import run_pretrain

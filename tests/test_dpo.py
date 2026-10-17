@@ -48,13 +48,13 @@ def test_dpo_loss_improves_chosen_probability(tmp_path):
     f = _pairs_file(tmp_path, 4)
     m = _model()
     data = DPOData(f, TOK, seq_len=32, batch_size=2, seed=0)
-    ref_logp = {"chosen": torch.zeros(2), "rejected": torch.zeros(2)}   # 简化：ref=均匀
+    ref_batch = {"chosen": torch.zeros(2), "rejected": torch.zeros(2)}  # 简化：ref=均匀
     opt = torch.optim.AdamW(m.parameters(), lr=1e-3)
     losses = []
     before = None
     for _ in range(60):
         batch = next(iter(data.iter_batches()))
-        loss = dpo_loss(m, batch, ref_logp, beta=0.1, sft_reg=0.2, grad_accum=1)
+        loss = dpo_loss(m, batch, ref_batch, beta=0.1, sft_reg=0.2, grad_accum=1)
         opt.zero_grad()
         loss.backward()
         opt.step()
