@@ -34,15 +34,15 @@ def _filter_top_p(logits: torch.Tensor, p: float) -> torch.Tensor:
 
 
 @torch.no_grad()
-def generate(model: GPT, tokenizer: BytePairTokenizer, prompt: str,
-             max_new_tokens: int = 64, temperature: float = 0.8,
-             top_k: int = 40, top_p: float = 0.9,
-             eos_id: Optional[int] = None, seed: Optional[int] = None) -> str:
-    """给定 prompt 续写文本（CPU 友好：逐 token 前向）。"""
+def _generate_from_ids(model: GPT, tokenizer: BytePairTokenizer, ids: List[int],
+                       max_new_tokens: int = 64, temperature: float = 0.8,
+                       top_k: int = 40, top_p: float = 0.9,
+                       eos_id: Optional[int] = None,
+                       seed: Optional[int] = None) -> str:
+    """从已有 id 序列继续自回归采样。"""
     if seed is not None:
         torch.manual_seed(seed)
     model.eval()
-    ids: List[int] = tokenizer.encode(prompt)
     max_seq = model.cfg.max_seq_len
     for _ in range(max_new_tokens):
         window = ids[-max_seq:]
@@ -58,3 +58,14 @@ def generate(model: GPT, tokenizer: BytePairTokenizer, prompt: str,
         if eos_id is not None and nxt == eos_id:
             break
     return tokenizer.decode(ids)
+
+
+@torch.no_grad()
+def generate(model: GPT, tokenizer: BytePairTokenizer, prompt: str,
+             max_new_tokens: int = 64, temperature: float = 0.8,
+             top_k: int = 40, top_p: float = 0.9,
+             eos_id: Optional[int] = None, seed: Optional[int] = None) -> str:
+    """给定 prompt 续写文本（CPU 友好：逐 token 前向）。"""
+    ids: List[int] = tokenizer.encode(prompt)
+    return _generate_from_ids(model, tokenizer, ids, max_new_tokens,
+                              temperature, top_k, top_p, eos_id, seed)
