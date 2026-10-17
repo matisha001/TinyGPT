@@ -17,7 +17,7 @@ model:
     targets: [q, k, v, o, gate, up, down]
     merge: false
   vision:
-    image_size: 224        # 输入图尺寸
+    image_size: 64         # demo 用小图加速（可改回 224）
     patch_size: 16         # patch 边长 → 196 patches
     hidden: 192            # ViT 隐层维度
     depth: 6               # ViT 层数
@@ -26,7 +26,7 @@ model:
     freeze: true           # true：冻结 ViT，仅训练投影层 + LoRA
 data:
   tokenizer_path: data/tokenizer/tokenizer.json
-  mm_path: data/datasets/mm_train.jsonl    # {"image": path, "question":..., "answer":...}
+  mm_path: data/demo/mm/mm_train.jsonl    # {"image": path, "question":..., "answer":...}
   seq_len: 256
   batch_size: 4
   pack: false
