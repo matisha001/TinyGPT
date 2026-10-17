@@ -17,6 +17,7 @@ data/kb_index/
 *.bin
 
 # 日志与临时
+logs/
 *.log
 *.tmp
 .DS_Store
