@@ -34,13 +34,15 @@ def build_chat_ids(tokenizer: BytePairTokenizer,
 @torch.no_grad()
 def chat(model: GPT, tokenizer: BytePairTokenizer, messages: List[dict],
          max_new_tokens: int = 128, temperature: float = 0.8, top_k: int = 40,
-         top_p: float = 0.9, seed: Optional[int] = None) -> str:
+         top_p: float = 0.9, seed: Optional[int] = None,
+         min_new_tokens: int = 4) -> str:
     """多轮对话：输入消息列表，返回 assistant 回答文本（仅生成 assistant 段）。"""
     from tinygpt.inference.generate import _generate_from_ids
     ids = build_chat_ids(tokenizer, messages)
     return _generate_from_ids(model, tokenizer, ids, max_new_tokens,
                               temperature, top_k, top_p,
-                              tokenizer.special_ids[EOS], seed)
+                              tokenizer.special_ids[EOS], seed,
+                              min_new_tokens=min_new_tokens)
 
 
 @torch.no_grad()
@@ -55,6 +57,7 @@ def chat_vision(model: "GPT", tokenizer: BytePairTokenizer, messages: List[dict]
         torch.manual_seed(seed)
     model.eval()
     ids = build_chat_ids(tokenizer, messages)
+    start = len(ids)
     max_seq = model.cfg.max_seq_len
     for _ in range(max_new_tokens):
         window = ids[-max_seq:]
@@ -69,7 +72,7 @@ def chat_vision(model: "GPT", tokenizer: BytePairTokenizer, messages: List[dict]
         ids.append(nxt)
         if nxt == tokenizer.special_ids[EOS]:
             break
-    return tokenizer.decode(ids)
+    return tokenizer.decode(ids[start:])
 
 
 @torch.no_grad()

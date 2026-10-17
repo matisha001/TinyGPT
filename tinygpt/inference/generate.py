@@ -38,11 +38,17 @@ def _generate_from_ids(model: GPT, tokenizer: BytePairTokenizer, ids: List[int],
                        max_new_tokens: int = 64, temperature: float = 0.8,
                        top_k: int = 40, top_p: float = 0.9,
                        eos_id: Optional[int] = None,
-                       seed: Optional[int] = None) -> str:
-    """从已有 id 序列继续自回归采样。"""
+                       seed: Optional[int] = None,
+                       decode_from: Optional[int] = None,
+                       min_new_tokens: int = 0) -> str:
+    """从已有 id 序列继续自回归采样。decode_from: 只解码该下标之后的新 token。
+
+    min_new_tokens: 前 N 个 token 抑制 EOS（防止 demo 级模型过早收尾）。
+    """
     if seed is not None:
         torch.manual_seed(seed)
     model.eval()
+    start = len(ids) if decode_from is None else decode_from
     max_seq = model.cfg.max_seq_len
     for _ in range(max_new_tokens):
         window = ids[-max_seq:]
@@ -50,6 +56,9 @@ def _generate_from_ids(model: GPT, tokenizer: BytePairTokenizer, ids: List[int],
         logits = model(input_ids)[0][0, -1]                     # [V]
         if temperature != 1.0:
             logits = logits / max(temperature, 1e-6)
+        new_n = len(ids) - start
+        if eos_id is not None and new_n < min_new_tokens:
+            logits[eos_id] = -float("inf")                       # EOS 抑制
         logits = _filter_top_k(logits, top_k)
         logits = _filter_top_p(logits, top_p)
         probs = F.softmax(logits, dim=-1)
@@ -57,7 +66,7 @@ def _generate_from_ids(model: GPT, tokenizer: BytePairTokenizer, ids: List[int],
         ids.append(nxt)
         if eos_id is not None and nxt == eos_id:
             break
-    return tokenizer.decode(ids)
+    return tokenizer.decode(ids[start:])
 
 
 @torch.no_grad()
