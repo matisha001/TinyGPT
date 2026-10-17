@@ -18,6 +18,11 @@ if str(ROOT) not in sys.path:
 from tinygpt.config import APIConfig, load_config
 
 
+def get(url: str):
+    with urllib.request.urlopen(url, timeout=30) as r:
+        return r.read().decode("utf-8")
+
+
 def post(url: str, payload: dict, stream: bool = False):
     req = urllib.request.Request(url, data=json.dumps(payload).encode("utf-8"),
                                  headers={"Content-Type": "application/json"})
@@ -50,7 +55,7 @@ def main() -> None:
         else:
             raise SystemExit("API 启动超时")
 
-        models = post(f"{base}/v1/models", {})
+        models = get(f"{base}/v1/models")
         print("[1/5] /v1/models ->", models[:120])
 
         comp = post(f"{base}/v1/completions", {"prompt": "机器学习", "max_tokens": 32})

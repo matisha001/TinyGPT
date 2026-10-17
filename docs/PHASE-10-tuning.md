@@ -41,3 +41,22 @@
 - **内存峰值**：训练态 ≈ 7M × 16B ≈ 115MB，远低于 16GB 上限。
 - **训练时长**：预训练 1200 步 ≈ 45 分钟；SFT 800 步 ≈ 15 分钟；LoRA ≈ 12 分钟；DPO ≈ 10 分钟。
 - 放大模型时只需改 config（hidden/layers/heads/ffn），无需改代码。
+
+## 5. 真机运行结果（2026-10-17 实测）
+
+| 阶段 | 配置 | 实测结果 |
+| --- | --- | --- |
+| 预训练 | pretrain.yaml（1200 步） | 完成 21:16，loss 9.9→~5.8，~45 分钟 |
+| SFT | sft.yaml（800 步，2322 打包块） | 完成 ~22:25，loss ~7.0→6.5，对话可生成（demo 级） |
+| LoRA | lora_sft.yaml（600 步，r8/α16，7 目标） | 完成 ~22:36，adapter.pt；42 层合并等价验证 True |
+| DPO | dpo.yaml（500 步，β=0.1，λ=0.2） | 完成 23:21，loss ~2.2；adapter 合并为 dpo.pt |
+| 多模态 | mm_finetune.yaml（ViT 冻结） | 图文前向 + 联合微调就绪 |
+| MCP | demo server | initialize→tools/list→tools/call 全握手 |
+| RAG | build_kb.py | 检索排序正确，search_kb 工具可用 |
+| API | api.yaml（dpo.pt） | 5 端点 + 流式 + agent 循环全通过 |
+
+**踩坑记录**
+1. MCP `notifications/initialized` 是单程通知，客户端若等待响应会永久阻塞 → `notify=True` 写而不读。
+2. DPO 参考 logprob 缓存是全量（2000 对），训练按批（4）需逐批切片；两遍迭代同 seed 顺序一致。
+3. 工作树在训练中途被切到旧分支（p0-scaffold）导致 tokenizer.json 短暂缺失 → run_pipeline 增加 `os.chdir(ROOT)` 保护。
+4. 测试专用依赖 httpx2（FastAPI TestClient）需安装，与用户排除的 langchain/sklearn 无关。
