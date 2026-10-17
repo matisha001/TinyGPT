@@ -74,7 +74,8 @@ def generate(model: GPT, tokenizer: BytePairTokenizer, prompt: str,
              max_new_tokens: int = 64, temperature: float = 0.8,
              top_k: int = 40, top_p: float = 0.9,
              eos_id: Optional[int] = None, seed: Optional[int] = None) -> str:
-    """给定 prompt 续写文本（CPU 友好：逐 token 前向）。"""
+    """给定 prompt 续写文本（CPU 友好：逐 token 前向）。返回 prompt + 续写。"""
     ids: List[int] = tokenizer.encode(prompt)
     return _generate_from_ids(model, tokenizer, ids, max_new_tokens,
-                              temperature, top_k, top_p, eos_id, seed)
+                              temperature, top_k, top_p, eos_id, seed,
+                              decode_from=0)
